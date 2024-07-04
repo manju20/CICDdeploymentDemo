@@ -1,16 +1,23 @@
+---
 - hosts: webserver
   become: true
   become_user: root
+  vars:
+   repo_path: https://github.com/manju20/AnsibleDockerdemo.git
+   dest_path: /tmp/gitrepo
   tasks:
-  - name: install docker
-    yum: name=docker state=present
-  - name: start docker
+  - name: Install multiple packages on host server
+    yum: name={{item}} state=present
+    loop:
+    - git
+    - docker
+  - name: Start the docker service
     service: name=docker state=started
-  - name: install git
-    yum: name=git state=present
-  - name: get the dockerfile from github
-    git: repo=https://github.com/manju20/AnsibleDockerdemo.git dest=/tmp/gitrepo
-  - name: build dockerfile
-    command: chdir=/tmp/gitrepo docker build -t deployimage:ansible23 .
-  - name: run the dockerfile
-    command: docker run -itd -P deployimage:ansible23
+  - name: Clone the repo to HostServer
+    git: repo={{repo_path}} dest={{dest_path}}
+  - name: Copy the build in the destination
+    copy: src=/var/lib/jenkins/workspace/CICDPipelineDemo1/target/addressbook.war dest={{dest_path}}
+  - name: Build Dockerfile
+    command: chdir={{dest_path}} docker build -t ansible23 .
+  - name: Run the image to deploy app in container
+    command: docker run -d -P ansible23
